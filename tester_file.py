@@ -2,20 +2,29 @@
 
 import re
 import urllib2
+import datetime
 from goose import Goose
 from BeautifulSoup import BeautifulSoup
 from webbrowser import open_new_tab
 
 #open HTML file and write
-filename = 'reading_estimator' + '.html' #i'll probably change the name
+#file name separated, may change soon
+
+filename = 'reading_estimator' + '.html'
 f = open(filename,'w')
+
+#HTML code
 HTMLhead = """<!DOCTYPE HTML>
 <html>
 <head><meta charset="UTF-8">
+<link rel="stylesheet" type="text/css" href="style.css">
 <title>Reading estimator</title></head>
 <body><ol>
 """
 f.write(HTMLhead)
+
+#list of links that will be excluded
+exclude = ['http://www.ycombinator.com','https://github.com/HackerNews/API','http://www.ycombinator.com/apply/']
 
 def wordcount(value):
 	# Find all non-whitespace patterns.
@@ -28,48 +37,53 @@ def estimatedTime (text, speed):
         read_time =  str(minutes) + " minutes"
         return read_time
 
-def wrapStringInHTML(title, read_time, url):
+def wrapStringInHTML(title, read_time, url, domain):
 	wrapper = """ 
-	<p><li><b> %s </b> - <i> %s </i><br>
-	URL: <a href=\"%s\">%s</li></a></p>
+	<p><li><b><a href=\"%s\" target="_blank"> %s </a></b><br>
+        <i> %s </i> - <a href=\"%s\">%s</li></a></p>
 	"""
-	whole = wrapper % (title, read_time, url, url)
+	whole = wrapper % (url, title, read_time, url, domain)
 	return whole
 
-def sourcePage (source_link): # source page where we will get links
-	average_speed =180    #in wpm - could change to 1K char/min (function would also need to change)
+def sourcePage (source_link):  # source page where we will get links
+	average_speed = 180    #in wpm - could change to 1K char/min (function would also need to change)
 	html_page = urllib2.urlopen(source_link)
 	soup = BeautifulSoup(html_page)
+        now = datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S") 
 
-	import datetime
+	for link in soup.findAll('a', attrs={'href': re.compile("^http")}):
 
-	now = datetime.datetime.today().strftime("%Y%m%d-%H%M%S") #i'll want this to append at the end of the html file to keep track of latest update
+            try:
+                url = link.get('href')
+                if url in exclude:
+                    pass
+                else:
+                    g = Goose()
+                    article = g.extract(url=url)
+                    domain = article.domain
 
-	for link in  soup.findAll('a', attrs={'href': re.compile("^http")}): # also gets https
-		try:
-			url = link.get('href')
-			g = Goose()
-			article = g.extract(url=url)
+                    if not article.title:
+                        article.title = url
 
-			dataInHTML = wrapStringInHTML((article.title), estimatedTime(wordcount(article.cleaned_text), average_speed), url) #this line is ridiculous.
-			f.write(dataInHTML.encode('utf-8'))
+		    dataInHTML = wrapStringInHTML((article.title), estimatedTime(wordcount(article.cleaned_text), average_speed), url, domain) #this line is ridiculous.
+		    f.write(dataInHTML.encode('utf-8')) 
 
-			print article.title
-			print estimatedTime(wordcount(article.cleaned_text), average_speed)
-			print link.get('href')
-			print ("\n")
+		    print article.title
+		    print estimatedTime(wordcount(article.cleaned_text), average_speed)
+		    print link.get('href')
+		    print ("\n")
+                     
+            except IndexError:
+                pass
+            continue
 
-		except IndexError:
-			pass
-		continue
-
-	#f.write("Last update:%s", % now)  --> I still need to format this correctly
+        f.write("</ol>Last update: ")
+        f.write(now)  
 
 sourcePage("https://news.ycombinator.com/")
 #sourcePage("https://lobste.rs/")
 
-
-HTMLfooter = """</ol></body>
+HTMLfooter = """</body>
 </html>
 """
 f.write(HTMLfooter)
