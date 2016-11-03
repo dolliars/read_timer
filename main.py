@@ -73,7 +73,7 @@ def sourcePage (source_link):  # source page where we will get links
 		    print link.get('href')
 		    print ("\n")
                      
-            except IndexError:
+            except (IndexError, RuntimeError):
                 pass
             continue
 
