@@ -10,7 +10,7 @@ from webbrowser import open_new_tab
 #open HTML file and write
 #file name separated, may change soon
 
-filename = 'reading_estimator' + '.html'
+filename = 'read_timer' + '.html'
 f = open(filename,'w')
 
 #HTML code
